@@ -5,7 +5,7 @@ import pandas as pd
 station_id = "44t"
 param = "PM25,PM10,O3,CO,NO2,SO2,WS,TEMP,RH,WD"
 data_type = "hr"
-start_date = "2024-02-19"
+start_date = "2023-02-19"
 end_date = "2024-02-20"
 start_time = "00"
 end_time = "23"
