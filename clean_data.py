@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-file_path = 'air4thai_44t_2023-02-19_2024-02-20.csv'
+file_path = 'air4thai_selected_stations_data.csv'
 data = pd.read_csv(file_path)
 
 
