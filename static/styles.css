@@ -1,0 +1,14 @@
+.bold-text {
+    font-weight: 800;
+}
+.space-top {
+    margin-top: 50px;
+}
+.dash {
+    margin-top: 20px;
+    margin-left: 15px;
+}
+.board-curved {
+    border-radius: 15px; /* Adjust the border radius as needed */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Define the shadow effect */
+}

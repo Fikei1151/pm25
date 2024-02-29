@@ -3,44 +3,49 @@ import pandas as pd
 import plotly.express as px
 import dash_mantine_components as dmc
 
+import dash
+import dash_bootstrap_components as dbc
+app = dash.Dash(external_stylesheets=[dbc.themes.YETI, 'static/styles.css'])
+
 df = pd.read_csv('cleaned_data_44t_2023-02-19_2024-02-20.csv')
 
-# Initialize the app - incorporate a Dash Mantine theme
-external_stylesheets = [dmc.theme.DEFAULT_COLORS]
-app = Dash(__name__, external_stylesheets=external_stylesheets)
-
-# App layout
-app.layout = dmc.Container([
-    dmc.Title('My First App with Data, Graph, and Controls', color="blue", size="h3"),
-    dmc.RadioGroup(
-            [dmc.Radio(i, value=i) for i in  ['PM25']],
-            id='my-dmc-radio-item',
-            value='PM25',
-            size="sm"
-        ),
-    dmc.Grid([
-        dmc.Col([
-            dash_table.DataTable(data=df.to_dict('records'), page_size=12, style_table={'overflowX': 'auto'})
-        ], span=6),
-        dmc.Col([
-            dcc.Graph(figure={}, id='graph-placeholder')
-        ], span=6),
-    ]),
-    dmc.Container(
-        "NEXT WEEK PREDICTED", size=200, px=0
-        ),           
-    
-], fluid=True)
-
-# Add controls to build the interaction
-@callback(
+@app.callback(
     Output(component_id='graph-placeholder', component_property='figure'),
     Input(component_id='my-dmc-radio-item', component_property='value')
 )
-def update_graph(col_chosen):
-    fig = px.line(df, x='DATETIMEDATA', y=col_chosen)
+
+def update_graph():
+    fig = px.line(df, x='DATETIMEDATA', y=['PM25'])
+    fig.update_layout(
+    xaxis_title="Date and Time",  # X-axis label
+    yaxis_title="PM2.5",  # Y-axis label
+)
     return fig
 
-# Run the App
+table = dbc.Card(
+    [
+        dash_table.DataTable(data=df.to_dict('records'), page_size=5, style_table={'overflowX': 'auto'})
+    ], color= 'light', outline= True
+)
+
+line_graph = dbc.Card(
+    [
+        dbc.CardBody([
+            html.H1('Line Graph'),
+            dcc.Graph(figure=update_graph(), id='graph-placeholder')
+        ]), dbc.CardFooter(table)
+    ], color="light", outline= True, class_name= "board-curved"
+)   
+
+app.layout = html.Div(
+    [
+        html.Div(html.H1('Regression PM 2.5', className= 'bold-text'), className= 'dash'),
+        dbc.Row([
+            dbc.Col(html.Div(line_graph, className= 'space-top'), width= 5)
+        ], justify= 'around')
+    ] 
+)
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run_server(debug=True)
