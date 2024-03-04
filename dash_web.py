@@ -6,7 +6,7 @@ import dash_mantine_components as dmc
 import dash_bootstrap_components as dbc
 app = dash.Dash(external_stylesheets=[dbc.themes.YETI, 'static/styles.css'])
 
-df = pd.read_csv('cleaned_data_44t_2023-02-19_2024-02-20.csv')
+df = pd.read_csv('cleaned_101t_data.csv')
 
 @app.callback(
     Output(component_id='graph-placeholder', component_property='figure'),
