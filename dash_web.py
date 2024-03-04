@@ -1,9 +1,8 @@
-from dash import Dash, html, dash_table, dcc, callback, Output, Input
+from dash import dash, html, dash_table, dcc, callback, Output, Input
 import pandas as pd
 import plotly.express as px
 import dash_mantine_components as dmc
 
-import dash
 import dash_bootstrap_components as dbc
 app = dash.Dash(external_stylesheets=[dbc.themes.YETI, 'static/styles.css'])
 
