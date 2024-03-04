@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 
-def get_station_data(station_id, start_date="2023-12-29", end_date="2024-03-29"):
+def get_station_data(station_id, start_date="2023-12-29", end_date="2024-03-03"):
     datas = []
     param = "PM25,PM10,O3,CO,NO2,SO2,WS,TEMP,RH,WD"
     data_type = "hr"
@@ -27,7 +27,7 @@ def main(selected_stations=None):
     
     if all_data:
         pd_from_dict = pd.DataFrame.from_dict(all_data)
-        pd_from_dict.to_csv("air4thai_selected_stations_data.csv", index=False)
+        pd_from_dict.to_csv("air4thai_101t_stations_data.csv", index=False)
         print("Data saved to air4thai_selected_stations_data.csv")
     else:
         print("No data retrieved.")
