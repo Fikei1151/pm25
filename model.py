@@ -1,28 +1,25 @@
 from pycaret.regression import *
 import pandas as pd
+# โหลดข้อมูลที่คุณคลีนแล้ว
+data = pd.read_csv('cleaned_101t_data.csv')
 
-# ตัวอย่าง: โหลดข้อมูลของคุณ
-# ต้องแก้ไขเส้นทางไฟล์ตามที่คุณมี
-data_path = 'cleaned_data_44t_2023-02-19_2024-02-20.csv'
-data = pd.read_csv(data_path)
+# ตั้งค่าสภาพแวดล้อม PyCaret
+exp_reg101 = setup(data = data, target = 'PM25', session_id=123,
+                   ignore_features = ['DATETIMEDATA'],
+                   normalize = True, transformation = True, 
+                   transform_target = True)
 
-# ตั้งค่าสภาพแวดล้อม PyCaret สำหรับการวิเคราะห์การถดถอย
-exp_reg = setup(data=data, target='PM25', session_id=123,
-                normalize=True, transformation=True, transform_target=True)
-
-# เปรียบเทียบโมเดลหลายๆ ตัวเพื่อหาโมเดลที่ดีที่สุด
+# เปรียบเทียบโมเดล
 best_model = compare_models()
 
-# ปรับแต่งโมเดลที่เลือก
-tuned_model = tune_model(best_model, optimize = 'RMSE')
+# สร้างโมเดล
+created_model = create_model(best_model)
 
-# ประเมินโมเดลที่ปรับแต่งแล้ว
+# ปรับแต่งโมเดล
+tuned_model = tune_model(created_model)
+
+# ประเมินโมเดล
 evaluate_model(tuned_model)
 
-# ทำนายผลลัพธ์ในชุดข้อมูลทดสอบ
-predictions = predict_model(tuned_model)
-
-save_model(tuned_model, 'final_tuned_model_PM25')
-
-# พิมพ์ผลลัพธ์การทำนาย
-print(predictions.head())
+# บันทึกโมเดล
+save_model(tuned_model, 'final_pm25_prediction_model')

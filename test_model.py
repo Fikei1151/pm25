@@ -1,21 +1,45 @@
-from pycaret.regression import *
 import pandas as pd
+from pycaret.regression import load_model, predict_model
+from datetime import datetime, timedelta
 
-# ตรวจสอบและแก้ไขเส้นทางไฟล์หรือชื่อไฟล์ตามที่จำเป็น
-loaded_model = load_model('final_tuned_model_PM25')  # ถ้าไฟล์อยู่ใน directory เดียวกันกับสคริปต์
+# โหลดโมเดลที่ฝึกสำเร็จแล้ว
+model = load_model('final_pm25_prediction_model')
 
-# ตัวอย่าง: โหลดข้อมูลพยากรณ์จาก CSV
-forecast_data_path = 'cleaned_data_44t_2023-02-19_2024-02-20.csv'  # ปรับเปลี่ยนเส้นทางไฟล์ตามที่ต้องการ
-forecast_data = pd.read_csv(forecast_data_path)
+# โหลดข้อมูลล่าสุดที่คุณมี
+latest_data = pd.read_csv('cleaned_101t_data.csv')
 
-predictions = predict_model(loaded_model, data=forecast_data)
+# กำหนดเวลาเริ่มต้นสำหรับการทำนาย
+start_datetime = datetime.strptime(latest_data['DATETIMEDATA'].iloc[-1], '%Y-%m-%d %H:%M:%S') + timedelta(hours=1)  # เริ่มจากชั่วโมงถัดไป
 
-# ตรวจสอบชื่อคอลัมน์ทั้งหมดใน predictions DataFrame เพื่อหาชื่อคอลัมน์ทำนาย
-print(predictions.columns)
+# สร้าง DataFrame เพื่อเก็บผลการทำนาย
+predictions = pd.DataFrame()
 
-# สมมติว่าชื่อคอลัมน์ที่ถูกต้องคือ 'Score' แทน 'Label'
-# และต้องการกรองข้อมูลสำหรับวันที่ 2024-01-27
-specific_day_prediction = predictions[predictions['DATETIMEDATA'].str.startswith('2024-01-28')]
+# ตั้งค่าเพื่อตรวจสอบเวลาที่ถูกเพิ่มแล้ว
+added_times = set()
 
-# แสดงผลลัพธ์การทำนายสำหรับวันที่ 2024-01-27
-print(specific_day_prediction[['DATETIMEDATA', 'prediction_label']])
+# วนลูปทำนายค่า PM2.5 สำหรับ 168 ชั่วโมง (7 วัน)
+for i in range(168):
+    # อัปเดตเวลาสำหรับข้อมูลในการทำนาย
+    current_datetime = start_datetime + timedelta(hours=i)
+    formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+    print(f"Adding prediction for {formatted_datetime}")
+    # ตรวจสอบว่าเวลานี้ถูกเพิ่มแล้วหรือไม่
+    if formatted_datetime in added_times:
+        continue  # ถ้าเพิ่มแล้ว, ข้ามการทำนายนี้
+    added_times.add(formatted_datetime)  # บันทึกเวลาที่เพิ่ม
+    
+    # สร้างข้อมูลอินพุตใหม่สำหรับการทำนาย
+    input_data = latest_data.tail(24).copy()  # ใช้ข้อมูล 24 ชั่วโมงล่าสุด
+    input_data['DATETIMEDATA'] = formatted_datetime
+   
+    # ทำนายค่า PM2.5 สำหรับชั่วโมงถัดไป
+    prediction = predict_model(model, data=input_data)
+    prediction['DATETIMEDATA'] = formatted_datetime
+    
+    # เพิ่มผลการทำนายลงใน predictions DataFrame
+    predictions = pd.concat([predictions, prediction[['DATETIMEDATA', 'prediction_label']]], ignore_index=True)
+    
+# พิมพ์หรือบันทึกผลการทำนาย
+print(predictions)
+predictions.to_csv('pm25_predictions_for_next_7_days.csv', index=False)
+
