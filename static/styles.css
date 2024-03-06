@@ -1,8 +1,12 @@
-.bold-text {
-    font-weight: 800;
+.text {
+    font-weight: bold;
+    margin-top: 5px;
+    margin-left: 50px;
+    color: rgb(255, 255, 255);
 }
 .space-top {
     margin-top: 50px;
+    margin-left: 50px;
 }
 .dash {
     margin-top: 20px;
@@ -11,4 +15,16 @@
 .board-curved {
     border-radius: 15px; /* Adjust the border radius as needed */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Define the shadow effect */
+}
+.nav{
+    margin-right: 20px;
+}
+.tab-style {
+    border-radius: 15px;  
+    box-shadow : 0 4px 8px rgba(0, 0, 0, 0.1); 
+}
+.active-text {
+    font-weight: bold;
+    color: black;
+    text-transform: uppercase;
 }
