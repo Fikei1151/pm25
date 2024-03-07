@@ -8,6 +8,10 @@
     margin-top: 50px;
     margin-left: 50px;
 }
+.space-graph {
+    margin-top: 25px;
+    margin-left: 50px;
+}
 .dash {
     margin-top: 20px;
     margin-left: 15px;
@@ -17,7 +21,8 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Define the shadow effect */
 }
 .nav{
-    margin-right: 20px;
+    margin-top: 10px;
+    margin-left: 260px;
 }
 .tab-style {
     border-radius: 15px;  
@@ -27,4 +32,26 @@
     font-weight: bold;
     color: black;
     text-transform: uppercase;
+}
+.table {
+    margin-right: 0px;
+    font-weight: bold;
+}
+.board-search {
+    border-radius: 15px; 
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
+}
+.text-start {
+    margin-left: 16px;
+}
+.end {
+    margin-left: 50px;
+}
+.tap {
+    margin-right: 0px;
+}
+.button {
+    border-radius: 15px; /* Adjust the border radius as needed */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Define the shadow effect */
+    margin-top: 20px;
 }

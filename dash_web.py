@@ -89,48 +89,74 @@ table = dbc.Card(
         dash_table.DataTable(data=df.to_dict('records'), page_size=5, style_table={'overflowX': 'auto'})
     ], color= 'light', outline= True
 )
+hiden_table = html.Div(
+    [
+        dbc.Button(
+            "Show Table",
+            id="collapse-button",
+            className="mb-3",
+            color="primary",
+            n_clicks=0,
+        ),
+        dbc.Collapse(
+            dbc.Card(dbc.CardBody(table)),
+            id="collapse",
+            is_open=False,
+        ),
+    ]
+)
+@app.callback(
+    Output("collapse", "is_open"),
+    [Input("collapse-button", "n_clicks")],
+    [State("collapse", "is_open")],
+)
+def toggle_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+search_bar =  dbc.Row([
+        dbc.Col([
+            (html.H6('DATE START', className= 'text-start')),
+            dbc.Input(type="search", placeholder="YYYY-MM-DD", className= 'board-search', size='sm')]),
+        dbc.Col([
+            (html.H6('DATE END', className= 'text-start')),
+            dbc.Input(type="search", placeholder="YYYY-MM-DD", className= 'board-search', size='sm')]),
+        dbc.Col(
+            dbc.Button(
+                "Search", color="primary", className="button", n_clicks=0, size= 'sm'
+            ),
+            width="auto",
+        ),
+    ])
 
 taps = html.Div(
     dbc.Tabs(
-        id="tabs",  # Add an ID to the Tabs for callback
-        children=[
-            dbc.Tab(label='Today', tab_id="tab-today"),
+        [
+            dbc.Tab(label='Today', tab_id="tab-today", tabClassName="ms-auto"),
             dbc.Tab(label='3 Days', tab_id="tab-3days"),
             dbc.Tab(label='7 Days', tab_id="tab-7days"),
-        ],
+        ], id='tabs',
         active_tab="tab-today",
     )
 )
 
 line_graph = dbc.Card(
     [
-        dbc.CardHeader(taps
-        ),
+        dbc.CardHeader(html.Div(taps)),
         dbc.CardBody([
-            html.H1('Line Graph'),
-            dcc.Graph(figure=update_graph(), id='graph-placeholder')
-        ]), dbc.CardFooter(table)
-    ], color="light", outline= True, className= "board-curved"
+            html.Div(search_bar, className='nav'),
+            dcc.Graph(figure=update_graph(), id='graph-placeholder', className= 'space-graph'),
+            dbc.Row(hiden_table, className= 'table')
+        ])
+    ], color="dark", outline= True, className= "board-curved"
 )   
-
-search_bar =  dbc.Row([
-        dbc.Col(dbc.Input(type="search", placeholder="Start", className= 'board-curved')),
-        dbc.Col(dbc.Input(type="search", placeholder="End", className= 'board-curved')),
-        dbc.Col(
-            dbc.Button(
-                "Search", color="primary", className="board-curved", n_clicks=0
-            ),
-            width="auto",
-        ),
-    ])
-
 
 navbar = dbc.Navbar(
     [
         dbc.Col([
                 html.H1('BURIRAM', className='text', id='logo'),
-                ]),  
-        dbc.Collapse(search_bar, className='nav', is_open= True), 
+                ]),   
     ],
     color="dark",
     dark=True,
@@ -141,8 +167,8 @@ app.layout = html.Div(
     [
         dbc.Col(navbar),
         dbc.Row([
-            dbc.Col(html.Div(line_graph, className='space-top'), width=6),
-            dbc.Col(html.Div(prediction_graph, className='space-top'), width=6)
+            dbc.Col(html.Div(line_graph, className='space-top'), width=5),
+            dbc.Col(html.Div(prediction_graph, className='space-top'), width=5)
         ], justify='around')
     ]
 )
