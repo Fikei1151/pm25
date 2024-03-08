@@ -12,7 +12,75 @@ app = dash.Dash(__name__,suppress_callback_exceptions=True,external_stylesheets=
 df = pd.read_csv('cleaned_101t_data.csv')
 df['DATETIMEDATA'] = pd.to_datetime(df['DATETIMEDATA'])
 
+navbar = dbc.Navbar(
+    [
+        dbc.Col([
+                html.H1('BURIRAM', className='text', id='logo'),
+                ]),   
+    ],
+    color="dark",
+    dark=True,
+)
 
+search_bar = dbc.Row([
+    dbc.Col([
+        html.H6('DATE START', className='text-start'),
+        dbc.Input(id='start_date', type="search", placeholder="YYYY-MM-DD", className='board-search', size='sm')
+    ]),
+    dbc.Col([
+        html.H6('DATE END', className='text-start'),
+        dbc.Input(id='end_date', type="search", placeholder="YYYY-MM-DD", className='board-search', size='sm')
+    ]),
+    dbc.Col(
+        dbc.Button(
+            "Search", id='search-button', color="primary", className="button", n_clicks=0, size='sm'
+        ),
+        width="auto",
+    ),
+])
+
+taps = html.Div(
+    dbc.Tabs(
+        [
+            dbc.Tab(label='Today', tab_id="tab-today", tabClassName="ms-auto"),
+            dbc.Tab(label='3 Days', tab_id="tab-3days"),
+            dbc.Tab(label='7 Days', tab_id="tab-7days"),
+        ], id='tabs',
+        active_tab="tab-today",
+    )
+)
+@app.callback(
+    Output("collapse", "is_open"),
+    [Input("collapse-button", "n_clicks")],
+    [State("collapse", "is_open")],
+)
+def toggle_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+table = dbc.Card(
+    [
+        dash_table.DataTable(data=df.to_dict('records'), page_size=5, style_table={'overflowX': 'auto'})
+    ], color= 'light', outline= True
+)
+
+hiden_table = html.Div(
+    [
+        dbc.Button(
+            "Show Table",
+            id="collapse-button",
+            className="mb-3",
+            color="primary",
+            n_clicks=0,
+        ),
+        dbc.Collapse(
+            dbc.Card(dbc.CardBody(table)),
+            id="collapse",
+            is_open=False,
+        ),
+    ]
+)
 ###########################ทำนายค่าpm25######################################
 def generate_predictions():
     data = df.copy()  # ใช้ข้อมูลที่โหลดไว้แล้วใน df
@@ -44,19 +112,12 @@ def generate_predictions():
 
     return predictions
 
-
-prediction_graph = dbc.Card(
-    [
-        dbc.CardHeader(html.H5("PM2.5 Predictions")),
-        dbc.CardBody([dcc.Graph(id='prediction-graph')])
-    ],
-    color="light", outline=True, className="board-curved"
-)
+prediction_graph = dcc.Graph(id='prediction-graph')
 
 last_date_in_data = df['DATETIMEDATA'].max()
 @app.callback(
     Output('prediction-graph', 'figure'),
-    [Input('tabs', 'active_tab')]
+    [Input('tabs', 'active_tab')],
 )
 def update_prediction_graph(active_tab):
     predictions = generate_predictions()
@@ -87,84 +148,46 @@ def update_graph():
     yaxis_title="PM2.5",  # Y-axis label
 )
     return fig
-table = dbc.Card(
-    [
-        dash_table.DataTable(data=df.to_dict('records'), page_size=5, style_table={'overflowX': 'auto'})
-    ], color= 'light', outline= True
-)
-hiden_table = html.Div(
-    [
-        dbc.Button(
-            "Show Table",
-            id="collapse-button",
-            className="mb-3",
-            color="primary",
-            n_clicks=0,
-        ),
-        dbc.Collapse(
-            dbc.Card(dbc.CardBody(table)),
-            id="collapse",
-            is_open=False,
-        ),
-    ]
-)
-@app.callback(
-    Output("collapse", "is_open"),
-    [Input("collapse-button", "n_clicks")],
-    [State("collapse", "is_open")],
-)
-def toggle_collapse(n, is_open):
-    if n:
-        return not is_open
-    return is_open
-
-search_bar =  dbc.Row([
-        dbc.Col([
-            (html.H6('DATE START', className= 'text-start')),
-            dbc.Input(type="search", placeholder="YYYY-MM-DD", className= 'board-search', size='sm')]),
-        dbc.Col([
-            (html.H6('DATE END', className= 'text-start')),
-            dbc.Input(type="search", placeholder="YYYY-MM-DD", className= 'board-search', size='sm')]),
-        dbc.Col(
-            dbc.Button(
-                "Search", color="primary", className="button", n_clicks=0, size= 'sm'
-            ),
-            width="auto",
-        ),
-    ])
-
-taps = html.Div(
-    dbc.Tabs(
-        [
-            dbc.Tab(label='Today', tab_id="tab-today", tabClassName="ms-auto"),
-            dbc.Tab(label='3 Days', tab_id="tab-3days"),
-            dbc.Tab(label='7 Days', tab_id="tab-7days"),
-        ], id='tabs',
-        active_tab="tab-today",
-    )
-)
 
 line_graph = dbc.Card(
     [
         dbc.CardHeader(html.Div(taps)),
         dbc.CardBody([
-            html.Div(search_bar, className='nav'),
+            html.Div((search_bar), className='nav'),
             dcc.Graph(figure=update_graph(), id='graph-placeholder', className= 'space-graph'),
             dbc.Row(hiden_table, className= 'table')
         ])
     ], color="dark", outline= True, className= "board-curved"
 )   
-
-navbar = dbc.Navbar(
-    [
-        dbc.Col([
-                html.H1('BURIRAM', className='text', id='logo'),
-                ]),   
-    ],
-    color="dark",
-    dark=True,
+@app.callback(
+    Output('graph-placeholder', 'figure'),
+    [Input('tabs', 'active_tab'),
+     Input('search-button', 'n_clicks')],
+    [State('start_date', 'value'),
+     State('end_date', 'value')]
 )
 
+def update_realtime_graph(active_tab, n_clicks, start_date, end_date):
+    df['DATETIMEDATA'] = pd.to_datetime(df['DATETIMEDATA'])
+    last_date_in_dataset = df['DATETIMEDATA'].max()
+    now = last_date_in_dataset
+    start_date = pd.to_datetime(start_date)
+    end_date = pd.to_datetime(end_date)
+
+    if n_clicks > 0:
+        filtered_df = df[(df['DATETIMEDATA'] >= start_date) & (df['DATETIMEDATA'] <= end_date)]
+    elif active_tab == "tab-today":
+        filtered_df = df[df['DATETIMEDATA'].dt.date == now.date()]
+    elif active_tab == "tab-3days":
+        filtered_df = df[df['DATETIMEDATA'] >= now - pd.Timedelta(days=3)]
+    elif active_tab == "tab-7days":
+        filtered_df = df[df['DATETIMEDATA'] >= now - pd.Timedelta(days=7)]
+    else:
+        filtered_df = df
+    n_clicks = 0
+    fig = px.line(filtered_df, x='DATETIMEDATA', y=['PM25'])
+    fig.update_layout(xaxis_title="Date and Time", yaxis_title="PM2.5", legend_title="Variable")
+    return fig
 
 ###########################เฉลี่ยตารางข้อมูล######################################
 def determine_pm25_level_color(value):
@@ -184,8 +207,7 @@ def determine_pm25_level_color(value):
 # ฟังก์ชันสำหรับการคำนวณค่าเฉลี่ย PM2.5 รายวันย้อนหลัง 7 วัน
 def calculate_daily_avg_and_color(df):
     # รวมข้อมูลและคำนวณค่าเฉลี่ยรายวัน
-    df_daily = df.resample('D', on='DATETIMEDATA').mean().reset_index()
-    
+    df_daily = df.resample('D', on='DATETIMEDATA').mean().round(decimals=2).reset_index()
     # คำนวณค่าเฉลี่ยและสีสำหรับ 7 วันย้อนหลัง
     df_last_7_days = df_daily.tail(7)
     df_last_7_days['color'] = df_last_7_days['PM25'].apply(determine_pm25_level_color)
@@ -195,33 +217,9 @@ def calculate_daily_avg_and_color(df):
 
 # คำนวณและได้ DataFrame ใหม่ที่มีค่าเฉลี่ยและสี
 df_daily_avg_color = calculate_daily_avg_and_color(df)
-
-###########################################################################
-
-
-###########################จัดlayout######################################
-
-app.layout = html.Div([
-    dbc.Container(fluid=True, children=[
-        # Navbar หรือ Header ของเว็บ
-        dbc.Row(
-            dbc.Col(navbar, width=12),
-            className="mb-3"
-        ),
-        
-        # ส่วนของกราฟ
-        dbc.Row([
-            dbc.Col(html.Div(line_graph, className='mb-3'), width=6),
-            dbc.Col(html.Div(prediction_graph, className='mb-3'), width=6),
-        ], justify='around'),
-        
-        # ส่วนของตาราง
-         dbc.Row(
-        [
-            dbc.Col(
-                dbc.Card(
+last7days_table = dbc.Card(
                     dbc.CardBody([
-                        html.H4("PM2.5 Daily Averages - Last 7 Days", className="card-title"),
+                        dbc.Row(html.H4("PM2.5 Daily Averages - Last 7 Days"), className='pmlastweek'),
                         dash_table.DataTable(
                             id='pm25_table',
                             columns=[
@@ -247,63 +245,44 @@ app.layout = html.Div([
                                 'color': 'white'
                             },
                         ),
-                         html.Div(
+                        html.Div(
                             [
                                 # สร้างแถบสีด้วย Bootstrap badges หรือคล้ายกับนั้น
-                               html.Span("ดี",  className="badge bg-info"),
+                                html.Span("ดี",  className="badge bg-info"),
                                 html.Span("ปานกลาง", className="badge bg-success"),
                                 html.Span("มีสุขภาพเสี่ยงต่ำ", className="badge bg-warning text-dark"),
                                 html.Span("มีสุขภาพเสี่ยง", className="badge bg-danger"),
                                 html.Span("มีสุขภาพเสี่ยงสูง", className="badge bg-dark"),
-                             
                             ],
                             style={'marginTop': 20, 'display': 'flex', 'justifyContent': 'space-between'}
                         ),
                     ])
-                ),
-                width=12
-            )
-        ])
-    ])
+                )
+###########################################################################
+groupcard =  dbc.Card(
+    [
+            dbc.CardBody([
+                dbc.Row(html.H4("PM2.5 PREDICTIONS"), className='predic'),
+                prediction_graph,
+                last7days_table
+            ])
+    ], color='dark', outline=True, className= 'board-curved')
+
+###########################จัดlayout######################################
+
+app.layout = html.Div([
+        dbc.Row(
+            dbc.Col(navbar),
+            className="mb-3"
+        ),
+        
+        # ส่วนของกราฟ
+        dbc.Row([
+            dbc.Col(html.Div(line_graph, className='space-top'), width=5),
+            dbc.Col(html.Div(groupcard, className='space-top'), width=5),
+        ], justify='around'),
 ])
 
 ###########################################################################
-@app.callback(
-    Output('time-update', 'children'),
-    [Input('interval-component', 'n_intervals')]
-)
-def update_value(n_intervals):
-    current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    return dbc.Card([
-        dbc.CardBody([
-            html.H1(f'{current_time}')
-        ])
-    ])
-
-
-@app.callback(
-    Output('graph-placeholder', 'figure'),
-    [Input('tabs', 'active_tab')]
-)
-def update_realtime_graph(active_tab):
-    df['DATETIMEDATA'] = pd.to_datetime(df['DATETIMEDATA'])
-    last_date_in_dataset = df['DATETIMEDATA'].max()
-    now = last_date_in_dataset
-
-    if active_tab == "tab-today":
-        filtered_df = df[df['DATETIMEDATA'].dt.date == now.date()]
-    elif active_tab == "tab-3days":
-        filtered_df = df[df['DATETIMEDATA'] >= now - pd.Timedelta(days=3)]
-    elif active_tab == "tab-7days":
-        filtered_df = df[df['DATETIMEDATA'] >= now - pd.Timedelta(days=7)]
-    else:
-        filtered_df = df
-
-    fig = px.line(filtered_df, x='DATETIMEDATA', y=['PM25'])
-    fig.update_layout(xaxis_title="Date and Time", yaxis_title="Measurement", legend_title="Variable")
-    return fig
-
-
-
 if __name__ == '__main__':
     app.run_server(debug=True)

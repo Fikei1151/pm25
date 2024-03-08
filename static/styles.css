@@ -6,7 +6,7 @@
 }
 .space-top {
     margin-top: 50px;
-    margin-left: 50px;
+    margin-left: 0px;
 }
 .space-graph {
     margin-top: 25px;
@@ -54,4 +54,10 @@
     border-radius: 15px; /* Adjust the border radius as needed */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Define the shadow effect */
     margin-top: 20px;
+}
+.pmlastweek {
+    margin-left: 20%;
+}
+.predic {
+    margin-left: 290px;
 }
