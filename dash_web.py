@@ -7,10 +7,13 @@ import dash_bootstrap_components as dbc
 from pycaret.regression import load_model, predict_model
 from datetime import datetime, timedelta
 
-app = dash.Dash(external_stylesheets=[dbc.themes.LUX, 'static/styles.css'])
+app = dash.Dash(__name__,suppress_callback_exceptions=True,external_stylesheets=[dbc.themes.LUX, 'static/styles.css'])
 
 df = pd.read_csv('cleaned_101t_data.csv')
+df['DATETIMEDATA'] = pd.to_datetime(df['DATETIMEDATA'])
 
+
+###########################ทำนายค่าpm25######################################
 def generate_predictions():
     data = df.copy()  # ใช้ข้อมูลที่โหลดไว้แล้วใน df
     # ตรวจสอบว่าคอลัมน์วันที่ในรูปแบบ datetime และคำนวณวันที่สุดท้าย
@@ -75,7 +78,7 @@ def update_prediction_graph(active_tab):
     return fig
 
 
-
+#################################################################
 
 def update_graph():
     fig = px.line(df, x='DATETIMEDATA', y=['PM25'])
@@ -163,17 +166,108 @@ navbar = dbc.Navbar(
 )
 
 
-app.layout = html.Div(
-    [
-        dbc.Col(navbar),
+###########################เฉลี่ยตารางข้อมูล######################################
+def determine_pm25_level_color(value):
+    if value <= 12:
+        return 'blue'  # ดี
+    elif value <= 35.4:
+        return 'green'  # ปานกลาง
+    elif value <= 55.4:
+        return 'orange'  # มีสุขภาพเสี่ยงต่ำ
+    elif value <= 150.4:
+        return 'red'  # มีสุขภาพเสี่ยง
+    elif value <= 250.4:
+        return 'purple'  # มีสุขภาพเสี่ยงสูง
+    else:
+        return 'purple'  # อันตราย
+
+# ฟังก์ชันสำหรับการคำนวณค่าเฉลี่ย PM2.5 รายวันย้อนหลัง 7 วัน
+def calculate_daily_avg_and_color(df):
+    # รวมข้อมูลและคำนวณค่าเฉลี่ยรายวัน
+    df_daily = df.resample('D', on='DATETIMEDATA').mean().reset_index()
+    
+    # คำนวณค่าเฉลี่ยและสีสำหรับ 7 วันย้อนหลัง
+    df_last_7_days = df_daily.tail(7)
+    df_last_7_days['color'] = df_last_7_days['PM25'].apply(determine_pm25_level_color)
+    
+    return df_last_7_days
+
+
+# คำนวณและได้ DataFrame ใหม่ที่มีค่าเฉลี่ยและสี
+df_daily_avg_color = calculate_daily_avg_and_color(df)
+
+###########################################################################
+
+
+###########################จัดlayout######################################
+
+app.layout = html.Div([
+    dbc.Container(fluid=True, children=[
+        # Navbar หรือ Header ของเว็บ
+        dbc.Row(
+            dbc.Col(navbar, width=12),
+            className="mb-3"
+        ),
+        
+        # ส่วนของกราฟ
         dbc.Row([
-            dbc.Col(html.Div(line_graph, className='space-top'), width=5),
-            dbc.Col(html.Div(prediction_graph, className='space-top'), width=5)
-        ], justify='around')
-    ]
-)
+            dbc.Col(html.Div(line_graph, className='mb-3'), width=6),
+            dbc.Col(html.Div(prediction_graph, className='mb-3'), width=6),
+        ], justify='around'),
+        
+        # ส่วนของตาราง
+         dbc.Row(
+        [
+            dbc.Col(
+                dbc.Card(
+                    dbc.CardBody([
+                        html.H4("PM2.5 Daily Averages - Last 7 Days", className="card-title"),
+                        dash_table.DataTable(
+                            id='pm25_table',
+                            columns=[
+                                {"name": "Date", "id": "DATETIMEDATA"},
+                                {"name": "PM2.5", "id": "PM25"},
+                                {"name": "Air Quality Color", "id": "color", "presentation": "markdown"},
+                            ],
+                            # ใช้ DataFrame ที่คำนวณค่าเฉลี่ยรายวันและสีแล้ว
+                            data=calculate_daily_avg_and_color(df).to_dict('records'),
+                            style_data_conditional=[
+                                {
+                                    'if': {
+                                        'column_id': 'color',
+                                        'filter_query': '{{color}} = {}'.format(color)
+                                    },
+                                    'backgroundColor': color,
+                                    'color': 'white'
+                                } for color in ['blue', 'green', 'yellow', 'orange', 'red', 'purple']
+                            ],
+                            style_cell={'textAlign': 'center'},
+                            style_header={
+                                'backgroundColor': 'black',
+                                'color': 'white'
+                            },
+                        ),
+                         html.Div(
+                            [
+                                # สร้างแถบสีด้วย Bootstrap badges หรือคล้ายกับนั้น
+                               html.Span("ดี",  className="badge bg-info"),
+                                html.Span("ปานกลาง", className="badge bg-success"),
+                                html.Span("มีสุขภาพเสี่ยงต่ำ", className="badge bg-warning text-dark"),
+                                html.Span("มีสุขภาพเสี่ยง", className="badge bg-danger"),
+                                html.Span("มีสุขภาพเสี่ยงสูง", className="badge bg-dark"),
+                             
+                            ],
+                            style={'marginTop': 20, 'display': 'flex', 'justifyContent': 'space-between'}
+                        ),
+                    ])
+                ),
+                width=12
+            )
+        ])
+    ])
+])
 
-
+###########################################################################
 @app.callback(
     Output('time-update', 'children'),
     [Input('interval-component', 'n_intervals')]
@@ -208,6 +302,7 @@ def update_realtime_graph(active_tab):
     fig = px.line(filtered_df, x='DATETIMEDATA', y=['PM25'])
     fig.update_layout(xaxis_title="Date and Time", yaxis_title="Measurement", legend_title="Variable")
     return fig
+
 
 
 if __name__ == '__main__':
