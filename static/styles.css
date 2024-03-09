@@ -63,5 +63,12 @@
     margin-left: 20%;
 }
 .predic {
-    margin-left: 290px;
+    margin-top: 35px;
+    margin-left: 310px;
+    font-weight: bold;
+}
+.realtime {
+    margin-top: 35px;
+    margin-left: 330px;
+    font-weight: bold;
 }

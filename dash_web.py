@@ -1,16 +1,13 @@
 from dash import dash, html, dash_table, dcc, callback, Output, Input, State
 import pandas as pd
 import plotly.express as px
-import dash_mantine_components as dmc
 import datetime
 import dash_bootstrap_components as dbc
 from pycaret.regression import load_model, predict_model
 from datetime import datetime, timedelta
+from air4 import realtime_data
 
 app = dash.Dash(__name__,suppress_callback_exceptions=True,external_stylesheets=[dbc.themes.LUX, 'static/styles.css'])
-from air4 import realtime_data
-df = realtime_data.main()
-df['DATETIMEDATA'] = pd.to_datetime(df['DATETIMEDATA'])
 
 navbar = dbc.Navbar(
     [
@@ -44,11 +41,14 @@ taps = dbc.Tabs(
         active_tab="tab-today",
     )
 
-def update_table():
-    table_rt = dbc.Card([
-        dash_table.DataTable(data=df.to_dict('records'), page_size=5)
-                        ], color= 'light', outline= False)
-    return table_rt
+taps_predic = dbc.Tabs(
+        [
+            dbc.Tab(label='Today', tab_id="pre-today", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='Next 3 Days', tab_id="pre-3days", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='Next 7 Days', tab_id="pre-7days", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+        ], id='tabs_predict',
+        active_tab="pre-7days",
+    )
 
 hiden_table = html.Div(
     [
@@ -75,74 +75,81 @@ def toggle_collapse(n, is_open):
     if n:
         return not is_open
     return is_open
-###########################ทำนายค่าpm25######################################
-def generate_predictions():
-    data = df.copy()  # ใช้ข้อมูลที่โหลดไว้แล้วใน df
-    # ตรวจสอบว่าคอลัมน์วันที่ในรูปแบบ datetime และคำนวณวันที่สุดท้าย
-    data['DATETIMEDATA'] = pd.to_datetime(data['DATETIMEDATA'])
-    last_date_in_dataset = data['DATETIMEDATA'].max()
 
-    # แก้ไข: เริ่มการทำนายจากชั่วโมงถัดไปของข้อมูลสุดท้าย
-    start_prediction_datetime = last_date_in_dataset + timedelta(hours=1)
-    future_dates = [start_prediction_datetime + timedelta(hours=i) for i in range(168)]  # 168 ชั่วโมง = 7 วัน
-
-    # สร้าง DataFrame
-    future_data = pd.DataFrame(future_dates, columns=['DATETIMEDATA'])
-
-    # คำนวณ features ที่จำเป็น
-    future_data['hour'] = future_data['DATETIMEDATA'].dt.hour
-    future_data['day_of_week'] = future_data['DATETIMEDATA'].dt.dayofweek
-    future_data['day'] = future_data['DATETIMEDATA'].dt.day
-    future_data['month'] = future_data['DATETIMEDATA'].dt.month
-
-    # โหลดโมเดลที่บันทึกไว้
-    final_model = load_model('final_pm25_prediction_model')
-
-    # ทำนายค่า PM2.5 ในอนาคต
-    predictions = predict_model(final_model, data=future_data)
-
-
-    print(predictions.head())
-
-    return predictions
-
-prediction_graph = dcc.Graph(id='prediction-graph')
-
-last_date_in_data = df['DATETIMEDATA'].max()
+hiden_predict_table = html.Div(
+    [
+        dbc.Button(
+            "Show Table",
+            id="collapse-button-pre",
+            className="mb-3",
+            color="primary",
+            n_clicks=0,
+        ),
+        dbc.Collapse(
+            (html.Div(id='table_realtime_pre')),
+            id="collapse-pre",
+            is_open=False,
+        ),
+    ]
+)
 @app.callback(
-    Output('prediction-graph', 'figure'),
-    [Input('tabs', 'active_tab')],
+    Output("collapse-pre", "is_open"),
+    [Input("collapse-button-pre", "n_clicks")],
+    [State("collapse-pre", "is_open")],
+)
+def toggle_collapse_pre(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+###########################ทำนายค่าpm25######################################
+
+prediction_graph = dbc.Card(
+    [
+        dbc.CardHeader(taps_predic),
+        dbc.CardBody([
+            dcc.Interval(
+                id='interval-pre',interval=1000*60, n_intervals=0 ),
+            dbc.Row(html.H4("PM2.5 PREDICTIONS"), className='predic'),
+            dcc.Graph(id= 'prediction-graph'),
+            dbc.Row(hiden_predict_table, className= 'table')
+        ])
+    ], color='dark', outline=True, className= 'board-curved'
 )
 
-def update_prediction_graph(active_tab):
-    predictions = generate_predictions()
+@app.callback(
+    Output('prediction-graph', 'figure'),
+    Output('table_realtime_pre', 'children'),
+    [Input('tabs_predict', 'active_tab')],
+    [State('interval-pre', 'n_intervals')]
+)
+
+def update_prediction_graph(active_tab, n_intervals):
+    df = realtime_data.main()
+    last_date_in_data = df['DATETIMEDATA'].max()
+    predictions = realtime_data.generate_predictions()
     predictions['DATETIMEDATA'] = pd.to_datetime(predictions['DATETIMEDATA'])
-    now = pd.Timestamp(last_date_in_data)
+    now = predictions['DATETIMEDATA'].min()
     
-    if active_tab == "tab-today":
+    if active_tab == "pre-today":
         filtered_df = predictions[predictions['DATETIMEDATA'].dt.date == now.date()]
-    elif active_tab == "tab-3days":
-        filtered_df = predictions[predictions['DATETIMEDATA'] >= now - timedelta(days=3)]
-    elif active_tab == "tab-7days":
-        filtered_df = predictions[predictions['DATETIMEDATA'] >= now - timedelta(days=7)]
+    elif active_tab == "pre-3days":
+        filtered_df = predictions[predictions['DATETIMEDATA'] <= now + timedelta(days=3)]
+    elif active_tab == "pre-7days":
+        filtered_df = predictions[predictions['DATETIMEDATA'] <= now + timedelta(days=7)]
     else:
         filtered_df = predictions
-
-    fig = px.line(filtered_df, x='DATETIMEDATA', y='prediction_label', title='PM2.5 Future Predictions')
- 
+    fig = px.line(filtered_df, x='DATETIMEDATA', y='prediction_label')
     fig.update_layout(xaxis_title="Date and Time", yaxis_title="Predicted PM2.5")
-    return fig
+
+    ###befor show on table #####
+    filtered_df['prediction_label'] = filtered_df['prediction_label'].round(decimals=2)
+    filtered_df['DATETIMEDATA'] = filtered_df['DATETIMEDATA'].dt.strftime('%a %m %y')
+    table_predict = dbc.Card([
+        dash_table.DataTable(data=filtered_df.to_dict('records'), page_size=4)], color= 'light', outline= False)
+    return fig, table_predict
 
 
 #################################################################
-
-def update_graph():
-    fig = px.line(df, x='DATETIMEDATA', y=['PM25'])
-    fig.update_layout(
-    xaxis_title="Date and Time",  # X-axis label
-    yaxis_title="PM2.5",  # Y-axis label
-)
-    return fig
 
 line_graph = dbc.Card(
     [
@@ -154,7 +161,8 @@ line_graph = dbc.Card(
             dbc.Row(
                 dbc.Collapse(dbc.Row(search_bar), is_open= False, id='show-search-bar')
             ),
-            dcc.Graph(figure=update_graph(), id='graph-placeholder', className= 'space-graph'),
+            dbc.Row(html.H4("PM2.5 HISTORY"), className='realtime'),
+            dcc.Graph(id='graph-placeholder', className= ''),
             dbc.Row(hiden_table, className= 'table')
         ])
     ], color="dark", outline= True, className= "board-curved"
@@ -202,38 +210,16 @@ def update_realtime_graph(active_tab, n_clicks, start_date, end_date, n_interval
         filtered_df = df
     fig = px.line(filtered_df, x='DATETIMEDATA', y=['PM25'])
     fig.update_layout(xaxis_title="Date and Time", yaxis_title="PM2.5", legend_title="Variable")
+
+    ###befor show on table #####
+    filtered_df['DATETIMEDATA'] = filtered_df['DATETIMEDATA'].dt.strftime('%a %m %y')
+
     table_rt = dbc.Card([
-        dash_table.DataTable(data=filtered_df.to_dict('records'), page_size=5)], color= 'light', outline= False)
+        dash_table.DataTable(
+            data=filtered_df.to_dict('records'), page_size=8)], color= 'light', outline= False)
     return fig, table_rt
 
-###########################เฉลี่ยตารางข้อมูล######################################
-def determine_pm25_level_color(value):
-    if value <= 12:
-        return 'blue'  # ดี
-    elif value <= 35.4:
-        return 'green'  # ปานกลาง
-    elif value <= 55.4:
-        return 'orange'  # มีสุขภาพเสี่ยงต่ำ
-    elif value <= 150.4:
-        return 'red'  # มีสุขภาพเสี่ยง
-    elif value <= 250.4:
-        return 'purple'  # มีสุขภาพเสี่ยงสูง
-    else:
-        return 'purple'  # อันตราย
-
-# ฟังก์ชันสำหรับการคำนวณค่าเฉลี่ย PM2.5 รายวันย้อนหลัง 7 วัน
-def calculate_daily_avg_and_color(df):
-    # รวมข้อมูลและคำนวณค่าเฉลี่ยรายวัน
-    df_daily = df.resample('D', on='DATETIMEDATA').mean().round(decimals=2).reset_index()
-    # คำนวณค่าเฉลี่ยและสีสำหรับ 7 วันย้อนหลัง
-    df_last_7_days = df_daily.tail(7)
-    df_last_7_days['color'] = df_last_7_days['PM25'].apply(determine_pm25_level_color)
-    
-    return df_last_7_days
-
-
 # คำนวณและได้ DataFrame ใหม่ที่มีค่าเฉลี่ยและสี
-df_daily_avg_color = calculate_daily_avg_and_color(df)
 last7days_table = dbc.Card(
                     dbc.CardBody([
                         dbc.Row(html.H4("PM2.5 Daily Averages - Last 7 Days"), className='pmlastweek'),
@@ -245,7 +231,7 @@ last7days_table = dbc.Card(
                                 {"name": "Air Quality Color", "id": "color", "presentation": "markdown"},
                             ],
                             # ใช้ DataFrame ที่คำนวณค่าเฉลี่ยรายวันและสีแล้ว
-                            data=calculate_daily_avg_and_color(df).to_dict('records'),
+                            data=realtime_data.calculate_daily_avg_and_color().to_dict('records'),
                             style_data_conditional=[
                                 {
                                     'if': {
@@ -273,17 +259,8 @@ last7days_table = dbc.Card(
                             ],
                             style={'marginTop': 20, 'display': 'flex', 'justifyContent': 'space-between'}
                         ),
-                    ])
+                    ]), color='dark', outline=True, className= 'board-curved'
                 )
-###########################################################################
-groupcard =  dbc.Card(
-    [
-            dbc.CardBody([
-                dbc.Row(html.H4("PM2.5 PREDICTIONS"), className='predic'),
-                prediction_graph,
-                last7days_table
-            ])
-    ], color='dark', outline=True, className= 'board-curved')
 
 ###########################จัดlayout######################################
 
@@ -295,8 +272,14 @@ app.layout = html.Div([
         
         # ส่วนของกราฟ
         dbc.Row([
-            dbc.Col(html.Div(line_graph, className='space-top'), width=5),
-            dbc.Col(html.Div(groupcard, className='space-top'), width=5),
+            dbc.Col(
+                html.Div(line_graph, className='space-top'), width=5),
+            dbc.Col(
+                dbc.Row(
+                    [
+                        html.Div(prediction_graph),
+                        html.Div(last7days_table, className='space-top')
+                    ], className='space-top'), width=5),
         ], justify='around'),
 ])
 
