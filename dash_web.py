@@ -151,12 +151,23 @@ line_graph = dbc.Card(
         dbc.CardBody([
             dcc.Interval(
                 id='interval-component',interval=1000*60, n_intervals=0 ),
-            dbc.Row(id= 'search-bar'),
+            dbc.Row(
+                dbc.Collapse(dbc.Row(search_bar), is_open= False, id='show-search-bar')
+            ),
             dcc.Graph(figure=update_graph(), id='graph-placeholder', className= 'space-graph'),
             dbc.Row(hiden_table, className= 'table')
         ])
     ], color="dark", outline= True, className= "board-curved"
-)   
+)
+@app.callback(
+    Output('show-search-bar', 'is_open'),
+    [Input('tabs', 'active_tab')],
+    [State('show-search-bar', 'is_open')]
+) 
+def tap_search(active_tab, is_open):
+    if active_tab == "tab-search":
+        return not is_open
+    
 @app.callback(
     Output('graph-placeholder', 'figure'),
     Output('table_realtime', 'children'),
@@ -180,8 +191,10 @@ def update_realtime_graph(active_tab, n_clicks, start_date, end_date, n_interval
         filtered_df = df[df['DATETIMEDATA'] >= now - pd.Timedelta(days=3)]
     elif active_tab == "tab-7days":
         filtered_df = df[df['DATETIMEDATA'] >= now - pd.Timedelta(days=7)]
-    elif active_tab == "tab-search":
-        if start_date <= now and end_date <= now:
+    elif active_tab == "tab-search" and n_clicks:
+        if start_date == end_date:
+            filtered_df = df[df['DATETIMEDATA'].dt.date == start_date.date()]
+        elif start_date <= now and end_date <= now:
             filtered_df = df[(df['DATETIMEDATA'] >= start_date) & (df['DATETIMEDATA'] <= end_date)]
         else:
             filtered_df = df
@@ -192,12 +205,6 @@ def update_realtime_graph(active_tab, n_clicks, start_date, end_date, n_interval
     table_rt = dbc.Card([
         dash_table.DataTable(data=filtered_df.to_dict('records'), page_size=5)], color= 'light', outline= False)
     return fig, table_rt
-@app.callback(
-    Output('search-bar', 'children'),[Input('tabs', 'active_tab')]
-)
-def tap_search(active_tab):
-    if active_tab == "tab-search":
-        return search_bar
 
 ###########################เฉลี่ยตารางข้อมูล######################################
 def determine_pm25_level_color(value):
