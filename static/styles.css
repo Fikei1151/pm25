@@ -47,6 +47,10 @@
 .end {
     margin-left: 50px;
 }
+.label-tap{
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
 .tap {
     margin-right: 0px;
 }

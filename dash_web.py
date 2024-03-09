@@ -8,8 +8,8 @@ from pycaret.regression import load_model, predict_model
 from datetime import datetime, timedelta
 
 app = dash.Dash(__name__,suppress_callback_exceptions=True,external_stylesheets=[dbc.themes.LUX, 'static/styles.css'])
-
-df = pd.read_csv('cleaned_101t_data.csv')
+from air4 import realtime_data
+df = realtime_data.main()
 df['DATETIMEDATA'] = pd.to_datetime(df['DATETIMEDATA'])
 
 navbar = dbc.Navbar(
@@ -25,45 +25,30 @@ navbar = dbc.Navbar(
 search_bar = dbc.Row([
     dbc.Col([
         html.H6('DATE START', className='text-start'),
-        dbc.Input(id='start_date', type="search", placeholder="YYYY-MM-DD", className='board-search', size='sm')
-    ]),
+        dbc.Input(id='start_date', type="search", placeholder="YYYY-MM-DD", className='board-search', size='sm')]),
     dbc.Col([
         html.H6('DATE END', className='text-start'),
-        dbc.Input(id='end_date', type="search", placeholder="YYYY-MM-DD", className='board-search', size='sm')
-    ]),
+        dbc.Input(id='end_date', type="search", placeholder="YYYY-MM-DD", className='board-search', size='sm')]),
     dbc.Col(
-        dbc.Button(
-            "Search", id='search-button', color="primary", className="button", n_clicks=0, size='sm'
-        ),
-        width="auto",
-    ),
-])
+        dbc.Button("Search", id='search-button', color="primary", className="button", n_clicks=0, size='sm'),
+            width="auto",),
+    ])
 
-taps = html.Div(
-    dbc.Tabs(
+taps = dbc.Tabs(
         [
-            dbc.Tab(label='Today', tab_id="tab-today", tabClassName="ms-auto"),
-            dbc.Tab(label='3 Days', tab_id="tab-3days"),
-            dbc.Tab(label='7 Days', tab_id="tab-7days"),
+            dbc.Tab(label='Today', tab_id="tab-today", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='3 Days', tab_id="tab-3days", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='7 Days', tab_id="tab-7days", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='search', tab_id="tab-search", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
         ], id='tabs',
         active_tab="tab-today",
     )
-)
-@app.callback(
-    Output("collapse", "is_open"),
-    [Input("collapse-button", "n_clicks")],
-    [State("collapse", "is_open")],
-)
-def toggle_collapse(n, is_open):
-    if n:
-        return not is_open
-    return is_open
 
-table = dbc.Card(
-    [
-        dash_table.DataTable(data=df.to_dict('records'), page_size=5, style_table={'overflowX': 'auto'})
-    ], color= 'light', outline= True
-)
+def update_table():
+    table_rt = dbc.Card([
+        dash_table.DataTable(data=df.to_dict('records'), page_size=5)
+                        ], color= 'light', outline= False)
+    return table_rt
 
 hiden_table = html.Div(
     [
@@ -75,12 +60,21 @@ hiden_table = html.Div(
             n_clicks=0,
         ),
         dbc.Collapse(
-            dbc.Card(dbc.CardBody(table)),
+            (html.Div(id='table_realtime')),
             id="collapse",
             is_open=False,
         ),
     ]
 )
+@app.callback(
+    Output("collapse", "is_open"),
+    [Input("collapse-button", "n_clicks")],
+    [State("collapse", "is_open")],
+)
+def toggle_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
 ###########################ทำนายค่าpm25######################################
 def generate_predictions():
     data = df.copy()  # ใช้ข้อมูลที่โหลดไว้แล้วใน df
@@ -119,6 +113,7 @@ last_date_in_data = df['DATETIMEDATA'].max()
     Output('prediction-graph', 'figure'),
     [Input('tabs', 'active_tab')],
 )
+
 def update_prediction_graph(active_tab):
     predictions = generate_predictions()
     predictions['DATETIMEDATA'] = pd.to_datetime(predictions['DATETIMEDATA'])
@@ -151,9 +146,12 @@ def update_graph():
 
 line_graph = dbc.Card(
     [
-        dbc.CardHeader(html.Div(taps)),
+        dbc.CardHeader(
+            dbc.Col(taps, style={"margin-left": "0px"})),
         dbc.CardBody([
-            html.Div((search_bar), className='nav'),
+            dcc.Interval(
+                id='interval-component',interval=1000*60, n_intervals=0 ),
+            dbc.Row(id= 'search-bar'),
             dcc.Graph(figure=update_graph(), id='graph-placeholder', className= 'space-graph'),
             dbc.Row(hiden_table, className= 'table')
         ])
@@ -161,33 +159,45 @@ line_graph = dbc.Card(
 )   
 @app.callback(
     Output('graph-placeholder', 'figure'),
-    [Input('tabs', 'active_tab'),
-     Input('search-button', 'n_clicks')],
-    [State('start_date', 'value'),
-     State('end_date', 'value')]
+    Output('table_realtime', 'children'),
+    [Input('tabs', 'active_tab')],
+    [Input('search-button', 'n_clicks')],
+    [State('start_date', 'value')],
+    [State('end_date', 'value')],
+    [State('interval-component', 'n_intervals')]
 )
-
-def update_realtime_graph(active_tab, n_clicks, start_date, end_date):
+def update_realtime_graph(active_tab, n_clicks, start_date, end_date, n_intervals):
+    df = realtime_data.main()
     df['DATETIMEDATA'] = pd.to_datetime(df['DATETIMEDATA'])
     last_date_in_dataset = df['DATETIMEDATA'].max()
     now = last_date_in_dataset
     start_date = pd.to_datetime(start_date)
     end_date = pd.to_datetime(end_date)
 
-    if n_clicks > 0:
-        filtered_df = df[(df['DATETIMEDATA'] >= start_date) & (df['DATETIMEDATA'] <= end_date)]
-    elif active_tab == "tab-today":
+    if active_tab == "tab-today":
         filtered_df = df[df['DATETIMEDATA'].dt.date == now.date()]
     elif active_tab == "tab-3days":
         filtered_df = df[df['DATETIMEDATA'] >= now - pd.Timedelta(days=3)]
     elif active_tab == "tab-7days":
         filtered_df = df[df['DATETIMEDATA'] >= now - pd.Timedelta(days=7)]
+    elif active_tab == "tab-search":
+        if start_date <= now and end_date <= now:
+            filtered_df = df[(df['DATETIMEDATA'] >= start_date) & (df['DATETIMEDATA'] <= end_date)]
+        else:
+            filtered_df = df
     else:
         filtered_df = df
-    n_clicks = 0
     fig = px.line(filtered_df, x='DATETIMEDATA', y=['PM25'])
     fig.update_layout(xaxis_title="Date and Time", yaxis_title="PM2.5", legend_title="Variable")
-    return fig
+    table_rt = dbc.Card([
+        dash_table.DataTable(data=filtered_df.to_dict('records'), page_size=5)], color= 'light', outline= False)
+    return fig, table_rt
+@app.callback(
+    Output('search-bar', 'children'),[Input('tabs', 'active_tab')]
+)
+def tap_search(active_tab):
+    if active_tab == "tab-search":
+        return search_bar
 
 ###########################เฉลี่ยตารางข้อมูล######################################
 def determine_pm25_level_color(value):
