@@ -86,6 +86,20 @@ def determine_pm25_level_color(value):
         return 'purple'  # มีสุขภาพเสี่ยงสูง
     else:
         return 'purple'  # อันตราย
+# ฟังก์ชันสำหรับการเปลี่ยนสี เป็นข้อความ
+def convert_color(color):
+    if color == 'blue':
+        return 'ดี'
+    elif color == 'green':
+        return 'ปานกลาง'
+    elif color == 'orange':
+        return 'มีสุขภาพเสี่ยงต่ำ'
+    elif color == 'red':
+        return 'มีสุขภาพเสี่ยง'
+    elif color == 'purple':
+        return 'มีสุขภาพเสี่ยงสูง'
+    else:
+        return 'อันตราย'
 # ฟังก์ชันสำหรับการคำนวณค่าเฉลี่ย PM2.5 รายวันย้อนหลัง 7 วัน
 def calculate_daily_avg_and_color(df=df):
     # รวมข้อมูลและคำนวณค่าเฉลี่ยรายวัน
@@ -93,6 +107,8 @@ def calculate_daily_avg_and_color(df=df):
     # คำนวณค่าเฉลี่ยและสีสำหรับ 7 วันย้อนหลัง
     df_last_7_days = df_daily.tail(7)
     df_last_7_days['color'] = df_last_7_days['PM25'].apply(determine_pm25_level_color)
+    df_last_7_days['quality'] = df_last_7_days['color'].apply(convert_color)
     ###befor show on table #####
-    df_last_7_days['DATETIMEDATA'] = df_last_7_days['DATETIMEDATA'].dt.strftime('%a %m %y')
+    df_last_7_days['DATETIMEDATA'] = df_last_7_days['DATETIMEDATA'].dt.strftime('%a %d %b %Y')
     return df_last_7_days
+

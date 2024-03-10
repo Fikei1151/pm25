@@ -143,9 +143,9 @@ def update_prediction_graph(active_tab, n_intervals):
 
     ###befor show on table #####
     filtered_df['prediction_label'] = filtered_df['prediction_label'].round(decimals=2)
-    filtered_df['DATETIMEDATA'] = filtered_df['DATETIMEDATA'].dt.strftime('%a %m %y')
+    filtered_df['DATETIMEDATA'] = filtered_df['DATETIMEDATA'].dt.strftime('%a %d %b %Y %I:%M%p')
     table_predict = dbc.Card([
-        dash_table.DataTable(data=filtered_df.to_dict('records'), page_size=4)], color= 'light', outline= False)
+        dash_table.DataTable(data=filtered_df.to_dict('records'), page_size=5)], color= 'light', outline= False)
     return fig, table_predict
 
 
@@ -212,37 +212,43 @@ def update_realtime_graph(active_tab, n_clicks, start_date, end_date, n_interval
     fig.update_layout(xaxis_title="Date and Time", yaxis_title="PM2.5", legend_title="Variable")
 
     ###befor show on table #####
-    filtered_df['DATETIMEDATA'] = filtered_df['DATETIMEDATA'].dt.strftime('%a %m %y')
+    filtered_df['DATETIMEDATA'] = filtered_df['DATETIMEDATA'].dt.strftime('%a %d %b %Y %I:%M%p')
 
     table_rt = dbc.Card([
         dash_table.DataTable(
-            data=filtered_df.to_dict('records'), page_size=8)], color= 'light', outline= False)
+            data=filtered_df.to_dict('records'), page_size=5
+            )
+        ], color= 'light', outline= False)
     return fig, table_rt
 
-# คำนวณและได้ DataFrame ใหม่ที่มีค่าเฉลี่ยและสี
+# data frame  avr รายวัน
+df_color = realtime_data.calculate_daily_avg_and_color().to_dict('records')
 last7days_table = dbc.Card(
                     dbc.CardBody([
-                        dbc.Row(html.H4("PM2.5 Daily Averages - Last 7 Days"), className='pmlastweek'),
+                        dbc.Row(html.H4("Daily Averages - Last Week"),  justify="center"),
                         dash_table.DataTable(
                             id='pm25_table',
                             columns=[
                                 {"name": "Date", "id": "DATETIMEDATA"},
                                 {"name": "PM2.5", "id": "PM25"},
-                                {"name": "Air Quality Color", "id": "color", "presentation": "markdown"},
+                                {"name": "Air Quality Color", "id": "quality", "presentation": "markdown"},
                             ],
                             # ใช้ DataFrame ที่คำนวณค่าเฉลี่ยรายวันและสีแล้ว
-                            data=realtime_data.calculate_daily_avg_and_color().to_dict('records'),
+                            data= df_color ,
                             style_data_conditional=[
                                 {
                                     'if': {
-                                        'column_id': 'color',
-                                        'filter_query': '{{color}} = {}'.format(color)
+                                        "column_id": "quality",
+                                        'filter_query': '{{quality}} = {}'.format(row['quality']),
                                     },
-                                    'backgroundColor': color,
-                                    'color': 'white'
-                                } for color in ['blue', 'green', 'yellow', 'orange', 'red', 'purple']
+                                    'textAlign': 'center',
+                                    'backgroundColor': row['color'],
+                                    'color': 'white',
+                                }  for row in df_color
                             ],
-                            style_cell={'textAlign': 'center'},
+                            style_cell={
+                                'textAlign': 'center'
+                                },
                             style_header={
                                 'backgroundColor': 'black',
                                 'color': 'white'
@@ -259,7 +265,7 @@ last7days_table = dbc.Card(
                             ],
                             style={'marginTop': 20, 'display': 'flex', 'justifyContent': 'space-between'}
                         ),
-                    ]), color='dark', outline=True, className= 'board-curved'
+                    ]), color='dark', outline=True, className= 'board-curved', style={'width': '50%'}
                 )
 
 ###########################จัดlayout######################################
@@ -273,12 +279,14 @@ app.layout = html.Div([
         # ส่วนของกราฟ
         dbc.Row([
             dbc.Col(
-                html.Div(line_graph, className='space-top'), width=5),
+                dbc.Row([
+                    html.Div(line_graph, className='space-top'),
+                    html.Div(last7days_table, className='space-top')
+                ]), width=5),
             dbc.Col(
                 dbc.Row(
                     [
-                        html.Div(prediction_graph),
-                        html.Div(last7days_table, className='space-top')
+                        html.Div(prediction_graph)
                     ], className='space-top'), width=5),
         ], justify='around'),
 ])
