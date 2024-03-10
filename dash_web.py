@@ -38,7 +38,23 @@ taps = dbc.Tabs(
             dbc.Tab(label='7 Days', tab_id="tab-7days", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
             dbc.Tab(label='search', tab_id="tab-search", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
         ], id='tabs',
-        active_tab="tab-today",
+        active_tab="tab-today", style={"marginLeft": "auto"}
+    )
+
+taps_element = dbc.Tabs(
+        [
+            dbc.Tab(label='pm2.5', tab_id="tab-pm25", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='pm10', tab_id="tab-pm10", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='o3', tab_id="tab-o3", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='co', tab_id="tab-co", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='no2', tab_id="tab-no2", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='so2', tab_id="tab-so2", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='ws', tab_id="tab-ws", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='temp', tab_id="tab-temp", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='rh', tab_id="tab-rh", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+            dbc.Tab(label='wd', tab_id="tab-wd", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
+        ], id='tabs-option',
+        active_tab="tab-pm25", style={"marginLeft": "auto"}
     )
 
 taps_predic = dbc.Tabs(
@@ -47,7 +63,7 @@ taps_predic = dbc.Tabs(
             dbc.Tab(label='Next 3 Days', tab_id="pre-3days", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
             dbc.Tab(label='Next 7 Days', tab_id="pre-7days", active_label_class_name='active-text', tab_class_name='tap', label_class_name='label-tap'),
         ], id='tabs_predict',
-        active_tab="pre-7days",
+        active_tab="pre-7days", style={"marginLeft": "auto"}    
     )
 
 hiden_table = html.Div(
@@ -153,16 +169,16 @@ def update_prediction_graph(active_tab, n_intervals):
 
 line_graph = dbc.Card(
     [
-        dbc.CardHeader(
-            dbc.Col(taps, style={"margin-left": "0px"})),
+        dbc.CardHeader(taps),
         dbc.CardBody([
             dcc.Interval(
                 id='interval-component',interval=1000*60, n_intervals=0 ),
-            dbc.Row(
-                dbc.Collapse(dbc.Row(search_bar), is_open= False, id='show-search-bar')
-            ),
             dbc.Row(html.H4("PM2.5 HISTORY"), className='realtime'),
-            dcc.Graph(id='graph-placeholder', className= ''),
+            html.Div(taps_element),
+            dbc.Row(
+                dbc.Collapse(dbc.Row(search_bar), is_open= False, id='show-search-bar', style={'margin-top' : '30px'})
+            ),
+            dcc.Graph(id='graph-placeholder'),
             dbc.Row(hiden_table, className= 'table')
         ])
     ], color="dark", outline= True, className= "board-curved"
@@ -180,12 +196,13 @@ def tap_search(active_tab, is_open):
     Output('graph-placeholder', 'figure'),
     Output('table_realtime', 'children'),
     [Input('tabs', 'active_tab')],
+    [Input('tabs-option','active_tab')],
     [Input('search-button', 'n_clicks')],
     [State('start_date', 'value')],
     [State('end_date', 'value')],
     [State('interval-component', 'n_intervals')]
 )
-def update_realtime_graph(active_tab, n_clicks, start_date, end_date, n_intervals):
+def update_realtime_graph(active_tab, option_tab, n_clicks, start_date, end_date, n_intervals):
     df = realtime_data.main()
     df['DATETIMEDATA'] = pd.to_datetime(df['DATETIMEDATA'])
     last_date_in_dataset = df['DATETIMEDATA'].max()
@@ -208,8 +225,32 @@ def update_realtime_graph(active_tab, n_clicks, start_date, end_date, n_interval
             filtered_df = df
     else:
         filtered_df = df
-    fig = px.line(filtered_df, x='DATETIMEDATA', y=['PM25'])
-    fig.update_layout(xaxis_title="Date and Time", yaxis_title="PM2.5", legend_title="Variable")
+    
+    if option_tab == "tab-pm25":
+        axisy = 'PM25'
+    elif option_tab == "tab-pm10":
+        axisy = 'PM10'
+    elif option_tab == "tab-o3":
+        axisy = 'O3'
+    elif option_tab == "tab-co":
+        axisy = 'CO'
+    elif option_tab == "tab-no2":
+        axisy = 'NO2'
+    elif option_tab == "tab-so2":
+        axisy = 'SO2'
+    elif option_tab == "tab-ws":
+        axisy = 'WS'
+    elif option_tab == "tab-temp":
+        axisy = 'TEMP'
+    elif option_tab == "tab-rh":
+        axisy = 'RH'
+    elif option_tab == "tab-wd":
+        axisy = 'WD'
+    else:
+        axisy = 'Unknown'
+
+    fig = px.line(filtered_df, x='DATETIMEDATA', y=axisy)
+    fig.update_layout(xaxis_title="Date and Time", yaxis_title=axisy, legend_title="Variable")
 
     ###befor show on table #####
     filtered_df['DATETIMEDATA'] = filtered_df['DATETIMEDATA'].dt.strftime('%a %d %b %Y %I:%M%p')
