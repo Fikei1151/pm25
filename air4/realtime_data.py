@@ -40,30 +40,38 @@ df = main()
 df['DATETIMEDATA'] = pd.to_datetime(df['DATETIMEDATA'])
 #####################################################
 
+
 def generate_predictions():
     data = df
+    # ตรวจสอบว่าคอลัมน์วันที่ในรูปแบบ datetime และคำนวณวันที่สุดท้าย
     data['DATETIMEDATA'] = pd.to_datetime(data['DATETIMEDATA'])
     last_date_in_dataset = data['DATETIMEDATA'].max()
 
-    # แก้ไข: เริ่มการทำนายจากชั่วโมงถัดไปของข้อมูลสุดท้าย
-    start_prediction_datetime = last_date_in_dataset + timedelta(hours=1)
-    future_dates = [start_prediction_datetime + timedelta(hours=i) for i in range(168)]  # 168 ชั่วโมง = 7 วัน
 
-    # สร้าง DataFrame
+    start_date = last_date_in_dataset + timedelta(hours=1)
+    future_dates = [start_date + timedelta(hours=i) for i in range(0, 168)]  
+
     future_data = pd.DataFrame(future_dates, columns=['DATETIMEDATA'])
-
-    # คำนวณ features ที่จำเป็น
     future_data['hour'] = future_data['DATETIMEDATA'].dt.hour
     future_data['day_of_week'] = future_data['DATETIMEDATA'].dt.dayofweek
     future_data['day'] = future_data['DATETIMEDATA'].dt.day
     future_data['month'] = future_data['DATETIMEDATA'].dt.month
 
-    # โหลดโมเดลที่บันทึกไว้
-    final_model = load_model('final_pm25_prediction_model')
+    # โหลดและทำนายด้วยโมเดลพารามิเตอร์ต่างๆ
+    parameters = ['NO2', 'SO2', 'WS', 'TEMP', 'RH', 'WD']
+    for param in parameters:
+        model = load_model(f'final_{param}_prediction_model')
+        predictions = predict_model(model, data=future_data)
+        future_data[param] = predictions['prediction_label']  # อาจต้องปรับเปลี่ยนชื่อคอลัมน์ของค่าทำนายให้ตรงกับที่โมเดลส่งกลับมา
 
-    # ทำนายค่า PM2.5 ในอนาคต
-    predictions = predict_model(final_model, data=future_data)
-    return predictions
+    # โหลดโมเดลทำนาย PM2.5 และทำนายค่า PM2.5
+    pm25_model = load_model('final_pm25_predictionGod_model')
+    input_data_for_pm25 = future_data[['NO2', 'SO2', 'WS', 'TEMP', 'RH', 'WD', 'hour', 'day_of_week', 'day', 'month']]
+    pm25_predictions = predict_model(pm25_model, data=input_data_for_pm25)
+    future_data['prediction_label'] = pm25_predictions['prediction_label']  # อาจต้องปรับเปลี่ยนชื่อคอลัมน์ของค่าทำนายให้ตรงกับที่โมเดลส่งกลับมา
+
+    # คืนค่าเฉพาะคอลัมน์วันที่และค่า PM2.5 ที่ทำนายได้
+    return future_data[['DATETIMEDATA', 'prediction_label']]
 ###########################เฉลี่ยตารางข้อมูล######################################
 def determine_pm25_level_color(value):
     if value <= 12:
