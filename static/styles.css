@@ -3,6 +3,7 @@
     margin-top: 5px;
     margin-left: 50px;
     color: rgb(255, 255, 255);
+    font-size: xx-large;
 }
 .space-top {
     margin-top: 50px;
@@ -64,11 +65,16 @@
 }
 .predic {
     margin-top: 35px;
-    margin-left: 310px;
+    margin-left: 150px;
     font-weight: bold;
 }
 .realtime {
     margin-top: 35px;
-    margin-left: 330px;
+    margin-left: 290px;
     font-weight: bold;
+    font-style: inherit;
+}
+.space-top-7days {
+    margin-top: 50px;
+    margin-left: 15%;
 }

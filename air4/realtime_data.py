@@ -29,7 +29,7 @@ def main():
     if all_data:
         pd_from_dict = pd.DataFrame.from_dict(all_data)
         pd_from_dict = pd_from_dict.drop(columns='stationID')
-        mean_values = pd_from_dict[['O3', 'CO', 'NO2', 'SO2']].mean()
+        mean_values = pd_from_dict[['O3', 'CO', 'NO2', 'SO2', 'TEMP']].mean()
         pd_from_dict = pd_from_dict.fillna(mean_values.round(decimals=2))
         return pd_from_dict
     else:
@@ -82,10 +82,8 @@ def determine_pm25_level_color(value):
         return 'orange'  # มีสุขภาพเสี่ยงต่ำ
     elif value <= 150.4:
         return 'red'  # มีสุขภาพเสี่ยง
-    elif value <= 250.4:
+    else :
         return 'purple'  # มีสุขภาพเสี่ยงสูง
-    else:
-        return 'purple'  # อันตราย
 # ฟังก์ชันสำหรับการเปลี่ยนสี เป็นข้อความ
 def convert_color(color):
     if color == 'blue':
@@ -96,10 +94,8 @@ def convert_color(color):
         return 'มีสุขภาพเสี่ยงต่ำ'
     elif color == 'red':
         return 'มีสุขภาพเสี่ยง'
-    elif color == 'purple':
-        return 'มีสุขภาพเสี่ยงสูง'
     else:
-        return 'อันตราย'
+        return 'มีสุขภาพเสี่ยงสูง'
 # ฟังก์ชันสำหรับการคำนวณค่าเฉลี่ย PM2.5 รายวันย้อนหลัง 7 วัน
 def calculate_daily_avg_and_color(df=df):
     # รวมข้อมูลและคำนวณค่าเฉลี่ยรายวัน

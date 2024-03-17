@@ -11,9 +11,13 @@ app = dash.Dash(__name__,suppress_callback_exceptions=True,external_stylesheets=
 
 navbar = dbc.Navbar(
     [
-        dbc.Col([
-                html.H1('BURIRAM', className='text', id='logo'),
-                ]),   
+        # Use a column to contain the logo
+        dbc.Col(
+            html.H1('Air Quality BURIRAM', className='text', id='logo'),
+            xs=12,  # Takes up full width on extra small screens
+            md=4,   # Takes up 4/12 of the width on medium screens and above
+        ),
+        # Add other navbar items here if needed
     ],
     color="dark",
     dark=True,
@@ -138,7 +142,6 @@ prediction_graph = dbc.Card(
     [Input('tabs_predict', 'active_tab')],
     [State('interval-pre', 'n_intervals')]
 )
-
 def update_prediction_graph(active_tab, n_intervals):
     df = realtime_data.main()
     last_date_in_data = df['DATETIMEDATA'].max()
@@ -173,7 +176,7 @@ line_graph = dbc.Card(
         dbc.CardBody([
             dcc.Interval(
                 id='interval-component',interval=1000*60, n_intervals=0 ),
-            dbc.Row(html.H4("PM2.5 HISTORY"), className='realtime'),
+            dbc.Row(html.H4("HISTORY"), className='realtime'),
             html.Div(taps_element),
             dbc.Row(
                 dbc.Collapse(dbc.Row(search_bar), is_open= False, id='show-search-bar', style={'margin-top' : '30px'})
@@ -194,7 +197,7 @@ def tap_search(active_tab, is_open):
     
 @app.callback(
     Output('graph-placeholder', 'figure'),
-    Output('table_realtime', 'children'),
+    Output('table_realtime', 'children'),   
     [Input('tabs', 'active_tab')],
     [Input('tabs-option','active_tab')],
     [Input('search-button', 'n_clicks')],
@@ -249,7 +252,7 @@ def update_realtime_graph(active_tab, option_tab, n_clicks, start_date, end_date
     else:
         axisy = 'Unknown'
 
-    fig = px.line(filtered_df, x='DATETIMEDATA', y=axisy)
+    fig = px.line(data_frame=(filtered_df), x='DATETIMEDATA', y=axisy)
     fig.update_layout(xaxis_title="Date and Time", yaxis_title=axisy, legend_title="Variable")
 
     ###befor show on table #####
@@ -257,7 +260,7 @@ def update_realtime_graph(active_tab, option_tab, n_clicks, start_date, end_date
 
     table_rt = dbc.Card([
         dash_table.DataTable(
-            data=filtered_df.to_dict('records'), page_size=5
+            data=filtered_df.to_dict('records'), page_size=5, 
             )
         ], color= 'light', outline= False)
     return fig, table_rt
@@ -266,7 +269,7 @@ def update_realtime_graph(active_tab, option_tab, n_clicks, start_date, end_date
 df_color = realtime_data.calculate_daily_avg_and_color().to_dict('records')
 last7days_table = dbc.Card(
                     dbc.CardBody([
-                        dbc.Row(html.H4("Daily Averages - Last Week"),  justify="center"),
+                        dbc.Row(html.H4("Daily Averages  -  PM2.5 Last Week"),  justify="center"),
                         dash_table.DataTable(
                             id='pm25_table',
                             columns=[
@@ -306,7 +309,7 @@ last7days_table = dbc.Card(
                             ],
                             style={'marginTop': 20, 'display': 'flex', 'justifyContent': 'space-between'}
                         ),
-                    ]), color='dark', outline=True, className= 'board-curved', style={'width': '50%'}
+                    ]), color='dark', outline=True, className= 'board-curved', style={'width': '70%'}
                 )
 
 ###########################จัดlayout######################################
@@ -322,8 +325,8 @@ app.layout = html.Div([
             dbc.Col(
                 dbc.Row([
                     html.Div(line_graph, className='space-top'),
-                    html.Div(last7days_table, className='space-top')
-                ]), width=5),
+                    html.Div(last7days_table, className='space-top-7days')
+                ]), width=6),
             dbc.Col(
                 dbc.Row(
                     [
